@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>华为任职天数 · 柔和拟物版</title>
+<style>
+  /* ============================================================
+     依据 soft-ui.md 的 Soft UI / Neumorphism 规范实现。
+     说明：交付要求为「单文件、零依赖、双击即开」，因此未引入
+     React / Tailwind，改用等价 CSS 落地同一套 token 契约
+     （底色、双向外阴影、内阴影、圆角、字色全部取自规范表）。
+     ============================================================ */
+
+  :root {
+    /* 色板：仅使用 soft-ui.md 第 2.1 节定义的颜色 */
+    --base: #F3EEF8;
+    --light: #FFFFFF;
+    --dark: #DCD2E8;
+    --accent: #6C5CE7;
+    --text: #3D3350;
+    --muted: #8A7D9E;
+
+    /* 阴影 token */
+    --soft: 8px 8px 16px var(--dark), -8px -8px 16px var(--light);
+    --soft-sm: 4px 4px 9px var(--dark), -4px -4px 9px var(--light);
+    --soft-inset: inset 2px 2px 5px var(--dark), inset -2px -2px 5px var(--light);
+    /* 由软阴影派生：规范要求 focus 时 inset 加深，故定义加深档 */
+    --soft-inset-deep: inset 3px 3px 7px var(--dark), inset -3px -3px 7px var(--light);
+
+    /* 圆角 token：12 / 16 / 24 */
+    --r-sm: 12px;
+    --r-md: 16px;
+    --r-lg: 24px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 40px 16px 48px;
+    background: var(--base);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .page { width: 100%; max-width: 560px; }
+
+  /* ---------- 品牌区 ---------- */
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 26px;
+    padding: 0 4px;
+  }
+
+  .brand-mark {
+    flex: none;
+    width: 46px;
+    height: 46px;
+    border-radius: var(--r-md);
+    background: linear-gradient(145deg, #8272F0, #5B4CD6);
+    box-shadow: var(--soft-sm);
+    color: var(--light);
+    font-size: 20px;
+    font-weight: 600;
+    display: grid;
+    place-items: center;
+    letter-spacing: -0.5px;
+  }
+
+  .brand h1 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+  }
+
+  .brand p {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  /* ---------- 卡片 ---------- */
+  .card {
+    background: var(--base);
+    border: 0;
+    border-radius: var(--r-lg);
+    box-shadow: var(--soft);
+    padding: 24px;
+  }
+
+  .card + .card, .card + .tip, .card + .foot { margin-top: 20px; }
+
+  /* ---------- 表单 ---------- */
+  .form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+
+  .field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.2px;
+  }
+
+  .date-box { position: relative; }
+
+  .date-box input {
+    position: relative;
+    width: 100%;
+    height: 48px;
+    padding: 0 44px 0 16px;
+    border: 0;
+    outline: none;
+    border-radius: var(--r-sm);
+    background: var(--base);
+    box-shadow: var(--soft-inset);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    transition: box-shadow .2s ease;
+  }
+
+  .date-box input.is-empty { color: var(--muted); }
+
+  .date-box input:hover { box-shadow: var(--soft-inset-deep); }
+
+  .date-box input:focus,
+  .date-box input:active {
+    box-shadow: var(--soft-inset-deep), inset 0 0 0 1px var(--accent);
+  }
+
+  /* 隐藏原生日历图标，改用与色板一致的线性图标；点击整块输入区唤起选择器 */
+  .date-box input::-webkit-calendar-picker-indicator { display: none; }
+
+  .date-icon {
+    position: absolute;
+    top: 50%;
+    right: 15px;
+    width: 18px;
+    height: 18px;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+    transition: color .2s ease;
+  }
+
+  .date-box:focus-within .date-icon { color: var(--accent); }
+
+  /* ---------- 结果区 ---------- */
+  .result-head {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.4px;
+    margin: 0 0 14px;
+    text-align: center;
+  }
+
+  .well {
+    padding: 22px 16px 18px;
+    border-radius: var(--r-md);
+    background: var(--base);
+    box-shadow: var(--soft-inset);
+    text-align: center;
+  }
+
+  .days {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 2px 6px;
+    color: var(--text);
+    font-size: clamp(44px, 13.5vw, 62px);
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -1.5px;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  .days .unit {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+  }
+
+  .range {
+    margin: 10px 0 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .stat {
+    background: var(--base);
+    border-radius: var(--r-md);
+    box-shadow: var(--soft-sm);
+    padding: 13px 8px 12px;
+    text-align: center;
+    min-width: 0;
+  }
+
+  .stat .k {
+    font-size: 11.5px;
+    color: var(--muted);
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+
+  .stat .v {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- 空状态 / 错误提示 ---------- */
+  .tip {
+    background: var(--base);
+    border-radius: var(--r-lg);
+    box-shadow: var(--soft-inset);
+    padding: 30px 22px;
+    text-align: center;
+    font-size: 13.5px;
+    color: var(--muted);
+    font-weight: 500;
+    line-height: 1.7;
+  }
+
+  .error {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px 20px;
+    border-radius: var(--r-lg);
+    background: var(--base);
+    box-shadow: var(--soft);
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.65;
+  }
+
+  .error .badge {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    margin-top: 1px;
+    border-radius: var(--r-sm);
+    background: linear-gradient(145deg, #8272F0, #5B4CD6);
+    box-shadow: var(--soft-sm);
+    color: var(--light);
+    font-size: 13px;
+    font-weight: 600;
+    display: grid;
+    place-items: center;
+  }
+
+  .hidden { display: none !important; }
+
+  .foot {
+    margin: 22px 0 0;
+    text-align: center;
+    font-size: 11.5px;
+    color: var(--muted);
+    font-weight: 500;
+    line-height: 1.9;
+  }
+
+  /* ---------- 响应式 ---------- */
+  @media (max-width: 480px) {
+    body { padding: 26px 14px 34px; }
+    .form { grid-template-columns: 1fr; gap: 16px; }
+    .card { padding: 20px; }
+    .result { padding: 22px 18px 18px; }
+    .stats { grid-template-columns: 1fr 1fr; gap: 11px; }
+    .stat:last-child { grid-column: 1 / -1; }
+    .stat { padding: 12px 8px 11px; }
+    .stat .v { font-size: 13px; }
+    .brand p { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="brand">
+    <div class="brand-mark" aria-hidden="true">H</div>
+    <div>
+      <h1>华为任职天数</h1>
+      <p>从入职那天算起，一起看看走过的日子</p>
+    </div>
+  </header>
+
+  <section class="card form" aria-label="日期选择">
+    <div class="field">
+      <label for="startDate">入职日期</label>
+      <div class="date-box">
+        <input type="date" id="startDate" required />
+        <svg class="date-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <rect x="3.5" y="5" width="17" height="15.5" rx="3.2" />
+          <path d="M8 3.5v3M16 3.5v3M3.5 10h17" />
+        </svg>
+      </div>
+    </div>
+    <div class="field">
+      <label for="endDate">计算到</label>
+      <div class="date-box">
+        <input type="date" id="endDate" required />
+        <svg class="date-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <rect x="3.5" y="5" width="17" height="15.5" rx="3.2" />
+          <path d="M8 3.5v3M16 3.5v3M3.5 10h17" />
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <section class="card result hidden" id="result">
+    <p class="result-head">在华为工作总天数</p>
+    <div class="well">
+      <div class="days"><span id="daysValue">0</span><span class="unit">天</span></div>
+      <p class="range" id="rangeText"></p>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="k">折算年数</div>
+        <div class="v" id="yearsValue">—</div>
+      </div>
+      <div class="stat">
+        <div class="k">折算月数</div>
+        <div class="v" id="monthsValue">—</div>
+      </div>
+      <div class="stat">
+        <div class="k">满年数</div>
+        <div class="v" id="fullValue">—</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tip" id="emptyTip">
+    选择入职日期后，这里会显示你在华为的总天数。
+  </section>
+
+  <section class="error hidden" id="errorTip" role="alert">
+    <span class="badge" aria-hidden="true">!</span>
+    <span id="errorText"></span>
+  </section>
+
+  <p class="foot">
+    天数含入职当天，按自然日计算（1 年 ≈ 365.25 天）。<br />
+    所有计算在本地浏览器完成，数据不会上传。
+  </p>
+</div>
+
+<script>
+(function () {
+  var MS_PER_DAY = 86400000;
+  var startInput = document.getElementById('startDate');
+  var endInput = document.getElementById('endDate');
+  var resultEl = document.getElementById('result');
+  var emptyEl = document.getElementById('emptyTip');
+  var errorEl = document.getElementById('errorTip');
+  var errorText = document.getElementById('errorText');
+
+  var daysValue = document.getElementById('daysValue');
+  var rangeText = document.getElementById('rangeText');
+  var yearsValue = document.getElementById('yearsValue');
+  var monthsValue = document.getElementById('monthsValue');
+  var fullValue = document.getElementById('fullValue');
+
+  function today() {
+    var now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
+  function pad(n) {
+    return n < 10 ? '0' + n : '' + n;
+  }
+
+  function toInputValue(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function parseInputValue(value) {
+    if (!value) return null;
+    var parts = value.split('-');
+    if (parts.length !== 3) return null;
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    var d = parseInt(parts[2], 10);
+    if (!y || !m || !d) return null;
+    var date = new Date(y, m - 1, d);
+    if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) {
+      return null;
+    }
+    return date;
+  }
+
+  function utcDays(date) {
+    return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / MS_PER_DAY;
+  }
+
+  function diffDays(start, end) {
+    return Math.round(utcDays(end) - utcDays(start));
+  }
+
+  function formatDate(d) {
+    return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
+  }
+
+  function calendarDiff(start, end) {
+    var y = end.getFullYear() - start.getFullYear();
+    var m = end.getMonth() - start.getMonth();
+    var d = end.getDate() - start.getDate();
+    if (d < 0) {
+      m -= 1;
+      d += new Date(end.getFullYear(), end.getMonth(), 0).getDate();
+    }
+    if (m < 0) {
+      m += 12;
+      y -= 1;
+    }
+    return { years: y, months: m, days: d };
+  }
+
+  function syncEmptyState(input) {
+    input.classList.toggle('is-empty', !input.value);
+  }
+
+  function showOnly(el) {
+    resultEl.classList.toggle('hidden', el !== resultEl);
+    emptyEl.classList.toggle('hidden', el !== emptyEl);
+    errorEl.classList.toggle('hidden', el !== errorEl);
+  }
+
+  function showError(message) {
+    errorText.textContent = message;
+    showOnly(errorEl);
+  }
+
+  function calculate() {
+    var start = parseInputValue(startInput.value);
+    var end = parseInputValue(endInput.value);
+
+    if (!start || !end) {
+      showOnly(emptyEl);
+      emptyEl.textContent = '选择入职日期后，这里会显示你在华为的总天数。';
+      return;
+    }
+
+    var now = today();
+    if (start > now) {
+      showError('入职日期不能晚于今天，请重新选择。');
+      return;
+    }
+    if (start > end) {
+      showError('入职日期不能晚于「计算到」的日期，请调整后重试。');
+      return;
+    }
+
+    var totalDays = diffDays(start, end) + 1;
+    var span = calendarDiff(start, end);
+
+    daysValue.textContent = totalDays.toLocaleString('zh-CN');
+    rangeText.textContent = formatDate(start) + ' → ' + formatDate(end);
+
+    var years = totalDays / 365.25;
+    yearsValue.textContent = (Math.floor(years * 10) / 10).toFixed(1) + ' 年';
+    monthsValue.textContent = Math.round(totalDays / 30.4375).toLocaleString('zh-CN') + ' 个月';
+    fullValue.textContent = span.years + ' 年 ' + span.months + ' 个月 ' + span.days + ' 天';
+
+    showOnly(resultEl);
+  }
+
+  var now = today();
+  endInput.max = toInputValue(now);
+  startInput.max = toInputValue(now);
+  endInput.value = toInputValue(now);
+  startInput.value = toInputValue(new Date(now.getFullYear() - 3, now.getMonth(), now.getDate()));
+
+  syncEmptyState(startInput);
+  syncEmptyState(endInput);
+
+  [startInput, endInput].forEach(function (input) {
+    input.addEventListener('input', function () {
+      syncEmptyState(input);
+      calculate();
+    });
+    input.addEventListener('change', function () {
+      syncEmptyState(input);
+      calculate();
+    });
+  });
+
+  // 原生图标已隐藏，点击整块输入区唤起系统日期面板（不支持时回退为聚焦）
+  document.querySelectorAll('.date-box').forEach(function (box) {
+    var input = box.querySelector('input');
+    box.addEventListener('click', function () {
+      if (typeof input.showPicker === 'function') {
+        try { input.showPicker(); } catch (e) { input.focus(); }
+      } else {
+        input.focus();
+      }
+    });
+  });
+
+  calculate();
+})();
+</script>
+</body>
+</html>
